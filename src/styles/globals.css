@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* Dark by default; .darkmode preserves the existing light-theme preference. */
+:root {
+  color-scheme: dark;
+  --body-color: #111827;
+  --fill-color: #f3f4f6;
+  --card-color: #1a2436;
+  --card-color2: #161e2e;
+  --navbar-color: #1f2937;
+  --border-color: #30405a;
+  --muted-color: #9ba9bf;
+  --board-color: #20201f;
+  --control-color: #141413;
+  --border-divider: rgba(255, 255, 255, 0.1);
+  --fill-color-rgb: 255, 255, 255;
+}
+
+.darkmode {
+  color-scheme: light;
+  --body-color: #f3f4f6;
+  --fill-color: #111827;
+  --card-color: #ffffff;
+  --card-color2: #f8fafc;
+  --navbar-color: #fbfcfe;
+  --border-color: #dce2eb;
+  --muted-color: #64748b;
+  --board-color: #f1f3f5;
+  --control-color: #e6e9ee;
+  --border-divider: rgba(0, 0, 0, 0.1);
+  --fill-color-rgb: 17, 24, 39;
+}
+
+@theme inline {
+  --color-background: var(--body-color);
+  --color-foreground: var(--fill-color);
+  --color-surface: var(--card-color);
+  --color-surface-soft: var(--card-color2);
+  --color-navbar: var(--navbar-color);
+  --color-line: var(--border-color);
+  --color-muted: var(--muted-color);
+  --color-board: var(--board-color);
+  --color-controls: var(--control-color);
+  --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+@custom-variant light (&:where(.darkmode, .darkmode *));
+
+/* Theme changes are instant; normal interaction transitions stay intact. */
+.theme-switching,
+.theme-switching::before,
+.theme-switching::after,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  button:not(:disabled), summary, select {
+    @apply cursor-pointer;
+  }
+  button:disabled {
+    @apply cursor-not-allowed;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-4 outline-blue-400;
+  }
+  ::selection {
+    @apply bg-blue-500/30;
+  }
+}
