@@ -20,6 +20,8 @@ export default function Dropdown({ id, label, value, options, onChange, icon, fu
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const search = useRef({ text: "", time: 0 });
+  const wasOpenRef = useRef(false);
+  const closedAtRef = useRef(0);
   const [isOpen, setIsOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
 
@@ -36,7 +38,7 @@ export default function Dropdown({ id, label, value, options, onChange, icon, fu
     const desiredHeight = Math.min(360, 56 + options.length * 40);
     const openAbove = placement === "auto" && below < desiredHeight && above > below;
     panel.style.width = `${width}px`;
-    panel.style.maxHeight = `${Math.min(360, openAbove ? above : below)}px`;
+    panel.style.maxHeight = `${desiredHeight}px`;
     panel.style.left = `${Math.max(12, Math.min(fullWidth ? bounds.left : bounds.right - width, viewportWidth - width - 12))}px`;
     panel.style.top = openAbove ? "auto" : `${bounds.bottom + 8}px`;
     panel.style.bottom = openAbove ? `${viewportHeight - bounds.top + 8}px` : "auto";
@@ -70,7 +72,9 @@ export default function Dropdown({ id, label, value, options, onChange, icon, fu
     if (!items?.length) return;
     const option = items[(index + items.length) % items.length];
     option.focus({ preventScroll: true });
-    option.scrollIntoView({ block: "nearest" });
+    if (panelRef.current && panelRef.current.scrollHeight > panelRef.current.clientHeight) {
+      option.scrollIntoView({ block: "nearest" });
+    }
   }
 
   function open(index = Math.max(0, options.findIndex((option) => option.value === value))) {
@@ -111,7 +115,19 @@ export default function Dropdown({ id, label, value, options, onChange, icon, fu
       if (!event.currentTarget.contains(event.relatedTarget) && panelRef.current?.matches(":popover-open")) close(false);
     }}>
       <button ref={triggerRef} id={id} type="button" disabled={disabled} aria-label={label} aria-haspopup="listbox" aria-expanded={isOpen} aria-controls={panelId}
-        onClick={() => panelRef.current?.matches(":popover-open") ? close() : open()}
+        onPointerDown={() => {
+          wasOpenRef.current = !!panelRef.current?.matches(":popover-open");
+        }}
+        onClick={() => {
+          const isCurrentlyOpen = panelRef.current?.matches(":popover-open");
+          const wasRecentlyClosed = Date.now() - closedAtRef.current < 250;
+          if (wasOpenRef.current || isCurrentlyOpen || wasRecentlyClosed) {
+            wasOpenRef.current = false;
+            close();
+          } else {
+            open();
+          }
+        }}
         onKeyDown={(event) => {
           if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
             event.preventDefault();
@@ -124,7 +140,13 @@ export default function Dropdown({ id, label, value, options, onChange, icon, fu
         <FiChevronDown aria-hidden="true" size={14} className={`shrink-0 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} />
       </button>
       <div ref={panelRef} id={panelId} popover="auto" role="listbox" aria-label={label} tabIndex={-1}
-        onToggle={(event) => setIsOpen(event.currentTarget.matches(":popover-open"))}
+        onToggle={(event) => {
+          const open = event.currentTarget.matches(":popover-open");
+          setIsOpen(open);
+          if (!open) {
+            closedAtRef.current = Date.now();
+          }
+        }}
         onKeyDown={handleKeys}
         className="fixed inset-auto m-0 overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface px-3 pb-3 pt-4 text-foreground shadow-xl outline-none">
         <div aria-hidden="true" className="mb-2 flex items-center gap-1.5 px-2 text-muted">

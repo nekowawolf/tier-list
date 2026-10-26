@@ -68,7 +68,7 @@ export async function exportBoard(board: TierBoard) {
   context.textAlign = "right";
   context.fillStyle = isLight ? "#64748b" : "#9ba9bf";
   context.font = `500 12px ${fontFamily}`;
-  context.fillText("Made with Tier List", width - 18, height - 20);
+  context.fillText("nww-tierlist.vercel.app", width - 18, height - 20);
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Could not create the PNG.")), "image/png"));
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

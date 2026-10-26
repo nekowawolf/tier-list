@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
-import { FiArrowDown, FiArrowUp, FiCheck, FiCheckCircle, FiChevronDown, FiChevronUp, FiDownload, FiGrid, FiHelpCircle, FiImage, FiInfo, FiLink, FiLoader, FiPlus, FiRotateCcw, FiRotateCw, FiSettings, FiShield, FiSliders, FiUpload, FiX } from "react-icons/fi";
+import { FiArrowDown, FiArrowUp, FiCheck, FiCheckCircle, FiChevronDown, FiChevronUp, FiDownload, FiGrid, FiHelpCircle, FiImage, FiInfo, FiLink, FiLoader, FiPlus, FiRotateCcw, FiRotateCw, FiSettings, FiShield, FiSliders, FiTrash2, FiUpload, FiX } from "react-icons/fi";
 import Button from "@/components/ui/Button";
 import Dropdown from "@/components/ui/Dropdown";
 import Modal from "@/components/ui/Modal";
@@ -162,11 +162,38 @@ export default function TierListEditor() {
     const image = images.get(id);
     if (!image) return null;
     return (
-      <button key={id} type="button" data-image-id={id} aria-label={`Image options for ${image.name}`} title={`${image.name} · Drag to rank or click for options`}
-        {...tileEvents(id, () => setSelectedImage(id))}
-        className={`relative size-[var(--tile-size)] shrink-0 touch-none select-none overflow-hidden bg-black/10 outline-offset-[-3px] transition-opacity hover:z-10 hover:ring-2 hover:ring-inset hover:ring-blue-400 focus-visible:z-10 ${drag?.imageId === id ? "cursor-grabbing opacity-30" : "cursor-grab"} ${target?.beforeId === id ? "border-l-4 border-blue-400" : ""}`}>
-        <Image src={image.src} alt={image.name} fill sizes="104px" unoptimized draggable={false} className="pointer-events-none object-cover" />
-      </button>
+      <div
+        key={id}
+        data-image-id={id}
+        className={`group relative size-[var(--tile-size)] shrink-0 select-none hover:z-10 focus-within:z-10 ${drag?.imageId === id ? "opacity-30" : ""} ${target?.beforeId === id ? "border-l-4 border-blue-400" : ""}`}
+      >
+        <button
+          type="button"
+          aria-label={`Image options for ${image.name}`}
+          title={`${image.name} · Drag to rank or click for options`}
+          {...tileEvents(id, () => setSelectedImage(id))}
+          className={`relative size-full touch-none select-none overflow-hidden bg-black/10 outline-offset-[-3px] transition-opacity hover:ring-2 hover:ring-inset hover:ring-blue-400 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400 ${drag?.imageId === id ? "cursor-grabbing" : "cursor-grab"}`}
+        >
+          <Image src={image.src} alt={image.name} fill sizes="104px" unoptimized draggable={false} className="pointer-events-none object-cover" />
+        </button>
+        <button
+          type="button"
+          aria-label={`Delete ${image.name}`}
+          title={`Delete ${image.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (selectedImage === id) setSelectedImage(null);
+            update((current) => removeImage(current, id));
+            setNotice({ message: `Deleted "${image.name}". Use Undo to restore.` });
+          }}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+          }}
+          className="absolute right-1 top-1 z-20 flex size-5 items-center justify-center rounded-full bg-black/75 text-white/90 shadow transition-colors hover:bg-red-500 hover:text-white focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+        >
+          <FiTrash2 size={11} aria-hidden="true" />
+        </button>
+      </div>
     );
   }
 
@@ -193,7 +220,7 @@ export default function TierListEditor() {
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={() => setShowHelp(true)} aria-label="How to use the editor" title="How to use" className="px-2.5"><FiHelpCircle size={16} /></Button>
               <Button onClick={() => fileInput.current?.click()}><FiUpload size={14} /> Import images</Button>
-              <Button variant="primary" onClick={download} disabled={exporting || !ready} aria-label="Export tier list as PNG">{exporting ? <FiLoader size={14} className="animate-spin" /> : <FiDownload size={14} />}<span className="hidden min-[400px]:inline">{exporting ? "Exporting…" : "Export PNG"}</span></Button>
+              <Button variant="primary" onClick={download} disabled={exporting || !ready} aria-label="Export tier list as PNG">{exporting ? <FiLoader size={14} className="animate-spin" /> : <FiDownload size={14} />} {exporting ? "Exporting…" : "Export PNG"}</Button>
             </div>
           </div>
 
@@ -235,9 +262,8 @@ export default function TierListEditor() {
             </div>
             <button onClick={() => setEditingTier("new")} disabled={board.tiers.length >= MAX_TIERS} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-line py-3 text-xs font-medium text-muted transition-colors hover:border-blue-400/50 hover:bg-blue-400/5 hover:text-blue-400 disabled:opacity-40"><FiPlus size={14} />{board.tiers.length >= MAX_TIERS ? "50-tier limit reached" : "Add a tier"}</button>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/70 px-4 py-3 text-[10px] text-muted sm:px-5">
+          <div className="flex items-center gap-2 border-t border-line/70 px-4 py-3 text-[10px] text-muted sm:px-5">
             <span className="flex min-w-0 items-center gap-1.5 leading-4"><FiInfo size={12} aria-hidden="true" className="block shrink-0" /><span>Drag images to rank. Select a label to edit it.</span></span>
-            <span className="flex items-center gap-1.5 leading-4"><FiCheckCircle size={12} aria-hidden="true" className="block shrink-0 text-blue-400 light:text-blue-600" /><span>Images are cropped to a 1:1 ratio</span></span>
           </div>
         </div>
 
