@@ -16,7 +16,7 @@ export default function ImageSettings({ image, tiers, containerId, onMove, onDel
       <p className="mb-6 mt-3 text-center text-xs text-muted wrap-anywhere">{image.name}</p>
       <label htmlFor="image-destination" className="text-xs font-medium">Move to</label>
       <div className="mb-4 mt-2">
-        <Dropdown id="image-destination" label="Move to" value={destination} fullWidth onChange={setDestination}
+        <Dropdown id="image-destination" label="Move to" value={destination} fullWidth maxHeight={200} onChange={setDestination}
           options={[{ value: "unranked", label: "Unranked images" }, ...tiers.map((tier) => ({ value: tier.id, label: tier.label }))]} />
       </div>
       <Button variant="primary" className="w-full" onClick={() => onMove(destination)} disabled={destination === containerId}>Move image <FiArrowRight /></Button>

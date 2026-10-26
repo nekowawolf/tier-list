@@ -13,9 +13,10 @@ interface DropdownProps {
   fullWidth?: boolean;
   disabled?: boolean;
   placement?: "auto" | "bottom";
+  maxHeight?: number;
 }
 
-export default function Dropdown({ id, label, value, options, onChange, icon, fullWidth = false, disabled = false, placement = "auto" }: DropdownProps) {
+export default function Dropdown({ id, label, value, options, onChange, icon, fullWidth = false, disabled = false, placement = "auto", maxHeight }: DropdownProps) {
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -35,20 +36,21 @@ export default function Dropdown({ id, label, value, options, onChange, icon, fu
     const width = Math.min(fullWidth ? bounds.width : Math.max(bounds.width, 224), viewportWidth - 24);
     const below = Math.max(0, viewportHeight - bounds.bottom - 20);
     const above = Math.max(0, bounds.top - 20);
-    const desiredHeight = Math.min(360, 56 + options.length * 40);
+    const maxPanelHeight = maxHeight ?? 360;
+    const desiredHeight = Math.min(maxPanelHeight, 56 + options.length * 40);
     const openAbove = placement === "auto" && below < desiredHeight && above > below;
     panel.style.width = `${width}px`;
     panel.style.maxHeight = `${desiredHeight}px`;
     panel.style.left = `${Math.max(12, Math.min(fullWidth ? bounds.left : bounds.right - width, viewportWidth - width - 12))}px`;
     panel.style.top = openAbove ? "auto" : `${bounds.bottom + 8}px`;
     panel.style.bottom = openAbove ? `${viewportHeight - bounds.top + 8}px` : "auto";
-  }, [fullWidth, options.length, placement]);
+  }, [fullWidth, maxHeight, options.length, placement]);
 
   useEffect(() => {
     if (!isOpen) return;
     const onScroll = (event: Event) => {
       if (event.target instanceof Node && panelRef.current?.contains(event.target)) return;
-      positionPanel();
+      close(false);
     };
     window.addEventListener("resize", positionPanel);
     window.addEventListener("scroll", onScroll, true);

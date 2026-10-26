@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
-import { FiArrowDown, FiArrowUp, FiCheck, FiCheckCircle, FiChevronDown, FiChevronUp, FiDownload, FiGrid, FiHelpCircle, FiImage, FiInfo, FiLink, FiLoader, FiPlus, FiRotateCcw, FiRotateCw, FiSettings, FiShield, FiSliders, FiTrash2, FiUpload, FiX } from "react-icons/fi";
+import { FiArrowDown, FiArrowUp, FiCheck, FiChevronDown, FiChevronUp, FiDownload, FiGrid, FiHelpCircle, FiImage, FiInfo, FiLink, FiLoader, FiPlus, FiRotateCcw, FiRotateCw, FiSettings, FiShield, FiSliders, FiTrash2, FiUpload } from "react-icons/fi";
+import { toast } from "sonner";
 import Button from "@/components/ui/Button";
 import Dropdown from "@/components/ui/Dropdown";
 import Modal from "@/components/ui/Modal";
@@ -30,7 +31,6 @@ export default function TierListEditor() {
   const [showHelp, setShowHelp] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [showUrlImport, setShowUrlImport] = useState(false);
-  const [notice, setNotice] = useState<{ message: string; error?: boolean } | null>(null);
   const move = useCallback((id: string, target: DropTarget) => update((current) => moveImage(current, id, target)), [update]);
   const { drag, target, tileEvents } = useImageDrag(move);
   const images = new Map(board.images.map((image) => [image.id, image]));
@@ -39,16 +39,13 @@ export default function TierListEditor() {
   const activeImage = selectedImage ? images.get(selectedImage) : undefined;
   const draggedImage = drag ? images.get(drag.imageId) : undefined;
 
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), notice.error ? 10000 : 5000);
-    return () => clearTimeout(timer);
-  }, [notice]);
-
   const importFiles = useCallback(async (files: File[], containerId = "unranked") => {
     if (importLock.current || !ready || !files.length) return;
     const remaining = MAX_IMAGES - board.images.length;
-    if (remaining <= 0) { setNotice({ message: `This board has reached its ${MAX_IMAGES}-image limit. Remove an image to add another.`, error: true }); return; }
+    if (remaining <= 0) {
+      toast.error(`This board has reached its ${MAX_IMAGES}-image limit. Remove an image to add another.`);
+      return;
+    }
     importLock.current = true;
     setImporting(true);
     const imported: TierImage[] = [];
@@ -69,10 +66,11 @@ export default function TierListEditor() {
       });
     }
     const skipped = Math.max(0, files.length - remaining);
-    setNotice({
-      message: `${imported.length ? `${imported.length} image${imported.length === 1 ? "" : "s"} added.` : "No images were added."}${failed ? ` ${failed} file${failed === 1 ? "" : "s"} could not be opened. Use supported images under 20 MB and 50 megapixels.` : ""}${skipped ? ` ${skipped} skipped (300-image limit).` : ""}`,
-      error: failed > 0 || skipped > 0,
-    });
+    if (failed > 0 || skipped > 0) {
+      toast.error(`${imported.length ? `${imported.length} image${imported.length === 1 ? "" : "s"} added.` : "No images were added."}${failed ? ` ${failed} file${failed === 1 ? "" : "s"} could not be opened. Use supported images under 20 MB and 50 megapixels.` : ""}${skipped ? ` ${skipped} skipped (300-image limit).` : ""}`);
+    } else if (imported.length) {
+      toast.success(`${imported.length} image${imported.length === 1 ? "" : "s"} added.`);
+    }
     importLock.current = false;
     setImporting(false);
   }, [ready, board.images.length, update]);
@@ -85,7 +83,7 @@ export default function TierListEditor() {
     try {
       const image = await importImageUrl(url);
       update((current) => ({ ...current, images: [...current.images, image], unranked: [...current.unranked, image.id] }));
-      setNotice({ message: "Image imported from URL." });
+      toast.success("Image imported from URL.");
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "The image could not be imported. Try another link or upload the file instead.";
@@ -153,9 +151,14 @@ export default function TierListEditor() {
 
   async function download() {
     setExporting(true);
-    try { await exportBoard(board); setNotice({ message: "Tier list exported as a PNG." }); }
-    catch (error) { setNotice({ message: error instanceof Error ? error.message : "The export failed. Please try again.", error: true }); }
-    finally { setExporting(false); }
+    try {
+      await exportBoard(board);
+      toast.success("Tier list exported as a PNG.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   function renderImage(id: string) {
@@ -184,12 +187,12 @@ export default function TierListEditor() {
             event.stopPropagation();
             if (selectedImage === id) setSelectedImage(null);
             update((current) => removeImage(current, id));
-            setNotice({ message: `Deleted "${image.name}". Use Undo to restore.` });
+            toast.success(`Deleted "${image.name}". Use Undo to restore.`);
           }}
           onPointerDown={(event) => {
             event.stopPropagation();
           }}
-          className="absolute right-1 top-1 z-20 flex size-5 items-center justify-center rounded-full bg-black/75 text-white/90 shadow transition-colors hover:bg-red-500 hover:text-white focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          className="absolute right-1 top-1 z-20 hidden size-5 items-center justify-center rounded-full bg-black/75 text-white/90 shadow transition-colors hover:bg-red-500 hover:text-white focus-visible:opacity-100 sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
         >
           <FiTrash2 size={11} aria-hidden="true" />
         </button>
@@ -295,12 +298,20 @@ export default function TierListEditor() {
       </div>
 
       {(editingTier === "new" || activeTier) && <TierSettings key={editingTier} tier={activeTier ?? { label: nextTierLabel(board.tiers.map((tier) => tier.label)), color: TIER_COLORS[board.tiers.length % TIER_COLORS.length] }} isNew={editingTier === "new"} canDelete={board.tiers.length > 1} hasImages={!!activeTier?.imageIds.length} onSave={saveTier} onClear={() => clearTier(false)} onDelete={() => clearTier(true)} onClose={() => setEditingTier(null)} />}
-      {activeImage && <ImageSettings key={activeImage.id} image={activeImage} tiers={board.tiers} containerId={board.tiers.find((tier) => tier.imageIds.includes(activeImage.id))?.id ?? "unranked"} onClose={() => setSelectedImage(null)} onMove={(containerId) => { move(activeImage.id, { containerId }); setSelectedImage(null); }} onDelete={() => { update((current) => removeImage(current, activeImage.id)); setSelectedImage(null); }} />}
+      {activeImage && <ImageSettings key={activeImage.id} image={activeImage} tiers={board.tiers} containerId={board.tiers.find((tier) => tier.imageIds.includes(activeImage.id))?.id ?? "unranked"} onClose={() => setSelectedImage(null)} onMove={(containerId) => { move(activeImage.id, { containerId }); setSelectedImage(null); }} onDelete={() => { update((current) => removeImage(current, activeImage.id)); setSelectedImage(null); toast.success(`Deleted "${activeImage.name}". Use Undo to restore.`); }} />}
       {showUrlImport && <ImageUrlImport onImport={importUrl} onClose={() => setShowUrlImport(false)} />}
       {showReset && <Modal title="Reset board" description="Choose what to reset. Both actions can be undone." onClose={() => setShowReset(false)}>
         <div className="space-y-3">
-          <button className="w-full rounded-xl border border-line bg-surface-soft p-4 text-left hover:border-blue-400/60" onClick={() => { update((current) => ({ ...current, unranked: [...current.unranked, ...current.tiers.flatMap((tier) => tier.imageIds)], tiers: current.tiers.map((tier) => ({ ...tier, imageIds: [] })) })); setShowReset(false); }}><span className="text-sm font-medium">Reset rankings</span><span className="mt-1 block text-xs leading-5 text-muted">Return all images to the tray. Keep your title, tiers, and colors.</span></button>
-          <button className="w-full rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-left hover:border-red-400/50" onClick={() => { update(() => createBoard()); setShowReset(false); }}><span className="text-sm font-medium text-red-400 light:text-red-600">Start a new board</span><span className="mt-1 block text-xs leading-5 text-muted">Remove all images and restore the default S–D tiers.</span></button>
+          <button className="w-full rounded-xl border border-line bg-surface-soft p-4 text-left hover:border-blue-400/60" onClick={() => {
+            update((current) => ({ ...current, unranked: [...current.unranked, ...current.tiers.flatMap((tier) => tier.imageIds)], tiers: current.tiers.map((tier) => ({ ...tier, imageIds: [] })) }));
+            setShowReset(false);
+            toast.success("Rankings reset. All images moved to unranked tray.");
+          }}><span className="text-sm font-medium">Reset rankings</span><span className="mt-1 block text-xs leading-5 text-muted">Return all images to the tray. Keep your title, tiers, and colors.</span></button>
+          <button className="w-full rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-left hover:border-red-400/50" onClick={() => {
+            update(() => createBoard());
+            setShowReset(false);
+            toast.success("Started a new board. Default tiers restored.");
+          }}><span className="text-sm font-medium text-red-400 light:text-red-600">Start a new board</span><span className="mt-1 block text-xs leading-5 text-muted">Remove all images and restore the default S–D tiers.</span></button>
         </div><Button className="mt-5 w-full" onClick={() => setShowReset(false)}>Cancel</Button>
       </Modal>}
       {showHelp && <Modal title="How to use Tier List" description="Import images, organize your rankings, and export the finished board." onClose={() => setShowHelp(false)}>
@@ -313,9 +324,6 @@ export default function TierListEditor() {
         </div>
       </Modal>}
       {drag && draggedImage && <div className="pointer-events-none fixed z-[100] size-[var(--tile-size)] -translate-x-1/2 -translate-y-1/2 rotate-3 overflow-hidden rounded-md border-2 border-blue-400 bg-surface shadow-2xl" style={{ left: drag.x, top: drag.y }}><Image src={draggedImage.src} alt="" fill sizes="104px" unoptimized className="object-cover" /></div>}
-      {notice && <div role={notice.error ? "alert" : "status"} aria-live={notice.error ? "assertive" : "polite"} aria-atomic="true" className={`fixed left-1/2 top-4 z-[60] flex w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-xl border bg-surface px-4 py-3.5 text-xs leading-5 shadow-xl min-[601px]:top-6 min-[601px]:w-[356px] ${notice.error ? "border-amber-400/40" : "border-line"}`}>
-        {notice.error ? <FiInfo size={18} className="shrink-0 text-amber-400" /> : <FiCheckCircle size={18} className="shrink-0 text-emerald-400" />}<span className="flex-1">{notice.message}</span><button onClick={() => setNotice(null)} aria-label="Dismiss notification" className="p-1 text-muted"><FiX size={16} /></button>
-      </div>}
     </section>
   );
 }
